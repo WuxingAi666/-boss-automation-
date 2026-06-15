@@ -1,0 +1,37 @@
+<!DOCTYPE html><html lang="zh-CN"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>BOSS助手 - 后台监控</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,"Microsoft YaHei",sans-serif;background:#f1f5f9;color:#1e293b}
+.topbar{background:linear-gradient(135deg,#0f766e,#14b8a6);color:#fff;padding:16px 24px;display:flex;justify-content:space-between;align-items:center}
+.topbar h1{font-size:20px}.dot{font-size:12px;opacity:.85}
+.cards{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;max-width:600px;margin:20px auto;padding:0 20px}
+.card{background:#fff;border-radius:12px;padding:24px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.card .num{font-size:42px;font-weight:700;color:#0f766e}
+.card .lbl{font-size:14px;color:#94a3b8;margin-top:6px}
+.table-wrap{max-width:900px;margin:0 auto 20px;padding:0 20px}
+table{width:100%;background:#fff;border-radius:12px;border-collapse:collapse;font-size:13px;box-shadow:0 1px 3px rgba(0,0,0,.06);overflow:hidden}
+th{background:#f8fafc;padding:12px;text-align:left;font-weight:600;color:#475569;border-bottom:2px solid #e2e8f0}
+td{padding:10px 12px;border-bottom:1px solid #f1f5f9}
+tr:hover td{background:#f0fdfa}
+.badge{display:inline-block;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:600;background:#dcfce7;color:#166534}
+.log-box{max-width:900px;margin:0 auto;padding:0 20px}
+.log-inner{background:#1e293b;color:#94a3b8;padding:16px;border-radius:12px;font-family:monospace;font-size:12px;max-height:250px;overflow-y:auto;line-height:1.5}
+</style></head><body>
+<div class="topbar"><h1>🤖 BOSS助手 后台监控</h1><span class="dot" id="sse-status">🟡 等待连接</span></div>
+<div class="cards">
+  <div class="card"><div class="num" id="today">0</div><div class="lbl">今日已投</div></div>
+  <div class="card"><div class="num" id="total">0</div><div class="lbl">总计投递</div></div>
+</div>
+<div class="table-wrap">
+  <h2 style="margin-bottom:12px;color:#334153">📋 投递记录</h2>
+  <table><thead><tr><th>时间</th><th>公司</th><th>职位</th><th>招呼语</th></tr></thead>
+  <tbody id="tb"><tr><td colspan="4" style="text-align:center;color:#94a3b8">暂无数据，开始投递后自动出现</td></tr></tbody></table>
+</div>
+<div class="log-box"><div class="log-inner" id="log">📡 等待实时推送...</div></div>
+<script>
+async function load(){const[s,h]=await Promise.all([fetch('/api/status').then(r=>r.json()),fetch('/api/history?limit=50').then(r=>r.json())]);document.getElementById('today').textContent=s.today_count||0;document.getElementById('total').textContent=s.total_applied||0;const d=h.data||[];document.getElementById('tb').innerHTML=d.length?d.map(l=>`<tr><td>${(l.applied_at||'').substring(5,16)}</td><td>${l.company||''}</td><td>${l.title||''}</td><td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${l.greeting||''}</td></tr>`).join(''):'<tr><td colspan="4" style="text-align:center;color:#94a3b8">暂无数据</td></tr>'}
+const es=new EventSource('/api/sse');es.onopen=()=>document.getElementById('sse-status').textContent='🟢 实时连接';es.onerror=()=>document.getElementById('sse-status').textContent='🔴 断开';es.onmessage=e=>{const d=JSON.parse(e.data);if(d.type==='ping')return;document.getElementById('today').textContent=d.count||0;const l=document.getElementById('log');l.innerHTML+=`<div>[${new Date().toLocaleTimeString()}] 📤 ${d.company} - ${d.title}</div>`;l.scrollTop=l.scrollHeight;if(l.children.length>50)l.firstChild.remove();load()}
+load()
+</script></body></html>
